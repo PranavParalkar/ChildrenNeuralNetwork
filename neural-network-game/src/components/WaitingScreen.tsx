@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { GamePhase, Layer } from '@/lib/types';
+import { GamePhase, Layer, DEFAULT_CONFIG } from '@/lib/types';
 import Timer from './Timer';
 
 interface WaitingScreenProps {
@@ -27,6 +27,17 @@ const phaseMessages: Record<string, Record<Layer, string>> = {
     output: 'Your turn! Form a sentence.',
   },
 };
+
+// Bug #13 fix: return correct total time per phase instead of hardcoded 30
+function getPhaseTime(phase: GamePhase): number {
+  switch (phase) {
+    case 'input-phase': return DEFAULT_CONFIG.inputTime;
+    case 'hidden-phase': return DEFAULT_CONFIG.hiddenTime;
+    case 'output-phase': return DEFAULT_CONFIG.outputTime;
+    case 'results': return DEFAULT_CONFIG.resultsDelay;
+    default: return 30;
+  }
+}
 
 export default function WaitingScreen({ layer, currentPhase, timeRemaining }: WaitingScreenProps) {
   const message = phaseMessages[currentPhase]?.[layer] || 'Processing...';
@@ -71,7 +82,7 @@ export default function WaitingScreen({ layer, currentPhase, timeRemaining }: Wa
         </motion.p>
 
         {timeRemaining > 0 && (
-          <Timer timeRemaining={timeRemaining} totalTime={30} label="Phase Timer" />
+          <Timer timeRemaining={timeRemaining} totalTime={getPhaseTime(currentPhase)} label="Phase Timer" />
         )}
 
         <motion.div

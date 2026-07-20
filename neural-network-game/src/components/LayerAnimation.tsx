@@ -45,26 +45,28 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
       onAnimationComplete={onComplete}
     >
       {/* Background particles */}
+      {/* Bug #5 fix: use deterministic vw/vh-based positions instead of window.innerWidth/Height
+          which crashes during SSR because window is undefined on the server */}
       <div className="absolute inset-0 overflow-hidden">
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
             className={`absolute w-2 h-2 rounded-full bg-gradient-to-r ${config.color}`}
             initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
+              left: `${(i * 17 + 7) % 100}%`,
+              top: `${(i * 23 + 13) % 100}%`,
               opacity: 0,
               scale: 0,
             }}
             animate={{
-              y: [null, Math.random() * -200],
+              y: [0, -100 - (i * 11) % 120],
               opacity: [0, 1, 0],
               scale: [0, 1.5, 0],
             }}
             transition={{
-              duration: 2 + Math.random() * 2,
+              duration: 2 + (i * 7) % 20 / 10,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: (i * 3) % 20 / 10,
             }}
           />
         ))}

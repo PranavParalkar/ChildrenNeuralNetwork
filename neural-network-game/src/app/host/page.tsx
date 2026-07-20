@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { getSocket } from '@/lib/socket';
+import { createSocket } from '@/lib/socket';
 import { Player, GamePhase, RoomStats } from '@/lib/types';
 import PlayerList from '@/components/PlayerList';
 import ResultsScreen from '@/components/ResultsScreen';
@@ -11,7 +11,10 @@ import ResultsScreen from '@/components/ResultsScreen';
 function HostContent() {
   const searchParams = useSearchParams();
   const hostName = searchParams.get('name') || 'Host';
-  const socketRef = useRef(getSocket());
+  // Bug #4 fix: create a fresh socket per page mount
+  const socketRef = useRef(createSocket());
+  // Bug #12 fix: track whether we've already created a room to prevent duplicates on reconnect
+  const roomCodeRef = useRef<string>('');
 
   const [roomCode, setRoomCode] = useState<string>('');
   const [players, setPlayers] = useState<Player[]>([]);
@@ -26,10 +29,15 @@ function HostContent() {
     const socket = socketRef.current;
 
     socket.on('connect', () => {
-      socket.emit('create-room', { hostName });
+      // Bug #12 fix: only create a room if we haven't already
+      // Prevents duplicate room creation on socket reconnect (network blip)
+      if (!roomCodeRef.current) {
+        socket.emit('create-room', { hostName });
+      }
     });
 
     socket.on('room-created', ({ roomCode }) => {
+      roomCodeRef.current = roomCode;
       setRoomCode(roomCode);
     });
 
@@ -60,34 +68,30 @@ function HostContent() {
       setTimeout(() => setError(''), 5000);
     });
 
-    if (!socket.connected) {
-      socket.connect();
-    }
+    // Connect the socket
+    socket.connect();
 
     return () => {
-      socket.off('connect');
-      socket.off('room-created');
-      socket.off('player-joined');
-      socket.off('player-left');
-      socket.off('host-update');
-      socket.off('timer-tick');
-      socket.off('show-results');
-      socket.off('error');
+      // Bug #4 fix: fully disconnect on unmount
+      socket.removeAllListeners();
+      socket.disconnect();
     };
   }, [hostName]);
 
   const handleStart = useCallback(() => {
-    if (roomCode) {
-      socketRef.current.emit('start-game', { roomCode });
+    const code = roomCodeRef.current;
+    if (code) {
+      socketRef.current.emit('start-game', { roomCode: code });
     }
-  }, [roomCode]);
+  }, []);
 
   const handleFinish = useCallback(() => {
-    if (roomCode) {
-      socketRef.current.emit('finish-game', { roomCode });
+    const code = roomCodeRef.current;
+    if (code) {
+      socketRef.current.emit('finish-game', { roomCode: code });
       window.location.href = '/';
     }
-  }, [roomCode]);
+  }, []);
 
   const copyCode = () => {
     navigator.clipboard.writeText(roomCode);

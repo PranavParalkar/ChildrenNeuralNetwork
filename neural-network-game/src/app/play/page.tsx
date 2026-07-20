@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getSocket } from '@/lib/socket';
+import { createSocket } from '@/lib/socket';
 import { Layer, GamePhase, WordWithFrequency } from '@/lib/types';
 import InstructionsModal from '@/components/InstructionsModal';
 import InputPhase from '@/components/InputPhase';
@@ -17,7 +17,8 @@ function PlayContent() {
   const searchParams = useSearchParams();
   const playerName = searchParams.get('name') || 'Player';
   const roomCode = searchParams.get('room') || '';
-  const socketRef = useRef(getSocket());
+  // Bug #4 fix: create a fresh socket per page mount (no stale singleton)
+  const socketRef = useRef(createSocket());
 
   const [layer, setLayer] = useState<Layer | null>(null);
   const [phase, setPhase] = useState<GamePhase>('waiting');
@@ -29,7 +30,10 @@ function PlayContent() {
   const [submitted, setSubmitted] = useState(false);
   const [results, setResults] = useState<{ sentences: string[]; imageUrl: string } | null>(null);
   const [error, setError] = useState('');
+  const [isFatalError, setIsFatalError] = useState(false); // Bug #11 fix
   const [playerCount, setPlayerCount] = useState(0);
+  // Track the player's layer in a ref so we can use it in event handlers without stale closures
+  const layerRef = useRef<Layer | null>(null);
 
   useEffect(() => {
     const socket = socketRef.current;
@@ -48,6 +52,7 @@ function PlayContent() {
 
     socket.on('game-starting', ({ layer }) => {
       setLayer(layer);
+      layerRef.current = layer;
       setShowInstructions(true);
     });
 
@@ -56,7 +61,17 @@ function PlayContent() {
       if (timeRemaining !== undefined) {
         setTimeRemaining(timeRemaining);
       }
-      setSubmitted(false);
+      // Bug #3 fix: Only reset submitted when the player's own active phase starts,
+      // not on every phase change (which would show the input form again for
+      // players who already submitted in their phase).
+      const currentLayer = layerRef.current;
+      const isMyPhase =
+        (phase === 'input-phase' && currentLayer === 'input') ||
+        (phase === 'hidden-phase' && currentLayer === 'hidden') ||
+        (phase === 'output-phase' && currentLayer === 'output');
+      if (isMyPhase) {
+        setSubmitted(false);
+      }
     });
 
     socket.on('show-image', ({ imageUrl }) => {
@@ -90,43 +105,40 @@ function PlayContent() {
 
     socket.on('error', ({ message }) => {
       setError(message);
+      // Bug #11 fix: differentiate fatal vs non-fatal errors
+      const fatal = message.includes('Host has disconnected') ||
+                    message.includes('Room not found') ||
+                    message.includes('Game has already started');
+      setIsFatalError(fatal);
+      if (!fatal) {
+        setTimeout(() => setError(''), 5000);
+      }
     });
 
-    if (!socket.connected) {
-      socket.connect();
-    }
+    // Connect the socket
+    socket.connect();
 
     return () => {
-      socket.off('connect');
-      socket.off('player-joined');
-      socket.off('player-left');
-      socket.off('game-starting');
-      socket.off('phase-change');
-      socket.off('show-image');
-      socket.off('show-words');
-      socket.off('show-phrases');
-      socket.off('timer-tick');
-      socket.off('submission-received');
-      socket.off('show-results');
-      socket.off('game-finished');
-      socket.off('error');
+      // Bug #4 fix: fully disconnect on unmount instead of just removing listeners
+      socket.removeAllListeners();
+      socket.disconnect();
     };
   }, [roomCode, playerName]);
 
-  const handleSubmitWord = (word: string) => {
+  const handleSubmitWord = useCallback((word: string) => {
     socketRef.current.emit('submit-word', { roomCode, word });
-  };
+  }, [roomCode]);
 
-  const handleSubmitPhrase = (phrase: string) => {
+  const handleSubmitPhrase = useCallback((phrase: string) => {
     socketRef.current.emit('submit-phrase', { roomCode, phrase });
-  };
+  }, [roomCode]);
 
-  const handleSubmitSentence = (sentence: string) => {
+  const handleSubmitSentence = useCallback((sentence: string) => {
     socketRef.current.emit('submit-sentence', { roomCode, sentence });
-  };
+  }, [roomCode]);
 
   // Error state
-  if (error) {
+  if (error && isFatalError) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
         <motion.div
@@ -169,6 +181,16 @@ function PlayContent() {
           <h2 className="text-2xl font-bold text-white mb-2">Waiting for Host</h2>
           <p className="text-gray-400 mb-1">Room: <span className="text-cyan-400 font-mono">{roomCode}</span></p>
           <p className="text-gray-500 text-sm">{playerCount} player{playerCount !== 1 ? 's' : ''} in room</p>
+          {/* Non-fatal error toast */}
+          {error && !isFatalError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2 rounded-xl text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
           <div className="mt-6 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 inline-block">
             <p className="text-sm text-gray-400">Playing as <span className="text-white font-medium">{playerName}</span></p>
           </div>
