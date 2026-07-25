@@ -1,46 +1,47 @@
 # Neural Network Game
 
-A real-time multiplayer game that simulates how neural networks process information. Players are randomly distributed across three layers (Input, Hidden, Output) and collaboratively transform an image into descriptive sentences — just like a real neural network.
+A real-time, responsive multiplayer game that simulates how neural networks process information. In this interactive experience, players act as nodes in a neural network. They are randomly distributed across three distinct layers (Input, Hidden, and Output) and must collaboratively transform an image into descriptive sentences — mimicking the layered processing of a real neural network.
 
-## How It Works
+**Key Features:**
+- **Host-Controlled Progression:** A dedicated host dashboard allows the game host to control phase timers, monitor per-layer submissions in real-time, and manage the flow of the game.
+- **Layer-Specific Tasks:** 
+  - **Input Layer (56% of players):** Describe a source image in a single word.
+  - **Hidden Layer (40% of players):** Synthesize the most common words into two-word phrases without seeing the image.
+  - **Output Layer (4% of players):** Construct full sentences from the generated phrases.
+- **Fully Responsive:** Playable on any device, from mobile phones to desktop computers.
 
-1. **Host** creates a room and shares the code with players
-2. **Players** join using the room code
-3. Host clicks **Start** — players are randomly assigned to layers:
-   - **Input Layer (56%)** — See an image, describe it in one word (30s)
-   - **Hidden Layer (40%)** — Receive top 25 words, form a two-word phrase (30s)
-   - **Output Layer (4%)** — Receive top 10 phrases, write a sentence (30s)
-4. Top 5 sentences are displayed alongside the original image
+## How to Run the Project
 
-## Tech Stack
-
-- **Next.js** (App Router + TypeScript)
-- **Socket.IO** for real-time communication
-- **Framer Motion** for animations
-- **Tailwind CSS** for styling
-- Custom Node.js server for WebSocket support
-
-## Getting Started
+Follow these instructions to get the project up and running on your local machine.
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
+- [Node.js](https://nodejs.org/) (Version 18 or higher)
+- npm (comes with Node.js)
 
-### Install
+### Installation
 
-```bash
-cd neural-network-game
-npm install
-```
+1. Navigate to the project directory:
+   ```bash
+   cd neural-network-game
+   ```
 
-### Development
+2. Install the necessary dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-```
+### Running the Game Locally
 
-The app runs at http://localhost:3000
+1. Start the development server (which also spins up the custom Socket.IO server):
+   ```bash
+   npm run dev
+   ```
+
+2. Open your web browser and go to:
+   **[http://localhost:3000](http://localhost:3000)**
+
+3. **To test multiplayer:** Open multiple browser tabs/windows. Use one tab to create a room as the **Host**, and use the other tabs to join as **Players** using the generated room code.
 
 ### Production
 
