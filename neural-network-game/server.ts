@@ -307,6 +307,8 @@ app.prepare().then(() => {
     socket.on('submit-word', ({ roomCode, word }) => {
       const room = rooms.get(roomCode);
       if (!room || room.phase !== 'input-phase') return;
+      // Reject submissions if timer hasn't started
+      if (!roomTimerStarted.get(roomCode)) return;
 
       const player = room.players.find(p => p.id === socket.id);
       if (!player || player.layer !== 'input' || player.hasSubmitted) return;
@@ -334,6 +336,8 @@ app.prepare().then(() => {
     socket.on('submit-phrase', ({ roomCode, phrase }) => {
       const room = rooms.get(roomCode);
       if (!room || room.phase !== 'hidden-phase') return;
+      // Reject submissions if timer hasn't started
+      if (!roomTimerStarted.get(roomCode)) return;
 
       const player = room.players.find(p => p.id === socket.id);
       if (!player || player.layer !== 'hidden' || player.hasSubmitted) return;
@@ -360,6 +364,8 @@ app.prepare().then(() => {
     socket.on('submit-sentence', ({ roomCode, sentence }) => {
       const room = rooms.get(roomCode);
       if (!room || room.phase !== 'output-phase') return;
+      // Reject submissions if timer hasn't started
+      if (!roomTimerStarted.get(roomCode)) return;
 
       const player = room.players.find(p => p.id === socket.id);
       if (!player || player.layer !== 'output' || player.hasSubmitted) return;
@@ -592,7 +598,10 @@ app.prepare().then(() => {
 
     // Show results after delay
     room.phase = 'results';
+    roomTimerStarted.set(roomCode, true);
     io.to(roomCode).emit('phase-change', { phase: 'results', timeRemaining: DEFAULT_CONFIG.resultsDelay });
+    io.to(roomCode).emit('timer-started', { phase: 'results' as GamePhase, totalTime: DEFAULT_CONFIG.resultsDelay });
+    io.to(room.hostId).emit('host-update', { phase: 'results', stats: getRoomStats(room), timerStarted: true });
 
     // Timer countdown for results delay (Bug #2 fix: track interval for cleanup)
     let timeLeft = DEFAULT_CONFIG.resultsDelay;

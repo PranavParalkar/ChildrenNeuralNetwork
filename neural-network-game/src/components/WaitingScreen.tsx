@@ -52,6 +52,11 @@ const phaseMessages: Record<string, Record<Layer, string>> = {
     hidden: 'Output Layer is constructing sentences...',
     output: 'Your turn! Form a sentence.',
   },
+  'results': {
+    input: 'Generating results...',
+    hidden: 'Generating results...',
+    output: 'Generating results...',
+  },
 };
 
 // Bug #13 fix: return correct total time per phase instead of hardcoded 30

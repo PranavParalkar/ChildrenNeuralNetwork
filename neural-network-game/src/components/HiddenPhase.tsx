@@ -74,21 +74,28 @@ export default function HiddenPhase({ words, timeRemaining, onSubmit, submitted,
                 type="text"
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
-                placeholder="Two-word phrase..."
-                className="flex-1 px-3 sm:px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm sm:text-base"
-                autoFocus
+                placeholder={timerStarted ? "Two-word phrase..." : "Waiting for host to start..."}
+                disabled={!timerStarted}
+                className="flex-1 px-3 sm:px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                autoFocus={timerStarted}
               />
               <button
                 type="submit"
-                disabled={wordCount !== 2}
+                disabled={wordCount !== 2 || !timerStarted}
                 className="px-4 sm:px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl transition-colors text-sm sm:text-base"
               >
                 Send
               </button>
             </div>
-            <p className={`text-xs ${wordCount === 2 ? 'text-green-400' : 'text-gray-500'}`}>
-              {wordCount}/2 words
-            </p>
+            {timerStarted ? (
+              <p className={`text-xs ${wordCount === 2 ? 'text-green-400' : 'text-gray-500'}`}>
+                {wordCount}/2 words
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500">
+                The host will start the timer soon...
+              </p>
+            )}
           </div>
         </motion.form>
       ) : (

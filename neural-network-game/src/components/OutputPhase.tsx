@@ -83,19 +83,25 @@ export default function OutputPhase({ phrases, timeRemaining, onSubmit, submitte
               type="text"
               value={sentence}
               onChange={(e) => setSentence(e.target.value)}
-              placeholder="Write a sentence using the phrases above..."
+              placeholder={timerStarted ? "Write a sentence using the phrases above..." : "Waiting for host to start..."}
               maxLength={200}
-              className="flex-1 px-3 sm:px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm sm:text-base"
-              autoFocus
+              disabled={!timerStarted}
+              className="flex-1 px-3 sm:px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              autoFocus={timerStarted}
             />
             <button
               type="submit"
-              disabled={!sentence.trim()}
+              disabled={!sentence.trim() || !timerStarted}
               className="px-4 sm:px-6 py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl transition-colors text-sm sm:text-base"
             >
               Send
             </button>
           </div>
+          {!timerStarted && (
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              The host will start the timer soon...
+            </p>
+          )}
         </motion.form>
       ) : (
         <motion.div
