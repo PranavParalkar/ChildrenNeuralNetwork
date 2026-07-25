@@ -9,6 +9,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal overflow on mobile */
+html {
+  overflow-x: hidden;
 }
 
 /* Custom scrollbar */
@@ -32,4 +38,15 @@ body {
 /* Smooth animations */
 * {
   scroll-behavior: smooth;
+}
+
+/* Mobile-friendly touch targets */
+@media (max-width: 640px) {
+  button, a, input[type="submit"] {
+    min-height: 44px;
+  }
+
+  input, textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
 }
