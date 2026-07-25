@@ -26,7 +26,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4 sm:p-6">
       {/* Background neural network pattern */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
@@ -40,7 +40,7 @@ export default function Home() {
         className="relative z-10 w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8 sm:mb-10">
           <motion.div
             className="flex items-center justify-center gap-3 mb-4"
             initial={{ scale: 0.8 }}
@@ -51,12 +51,12 @@ export default function Home() {
             <div className="w-4 h-4 rounded-full bg-purple-400" />
             <div className="w-4 h-4 rounded-full bg-amber-400" />
           </motion.div>
-          <h1 className="text-4xl font-bold text-white mb-2">Neural Network</h1>
-          <p className="text-gray-400">A crowd-powered image description game</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Neural Network</h1>
+          <p className="text-sm sm:text-base text-gray-400">A crowd-powered image description game</p>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-gray-800/50 rounded-xl p-1 mb-6 border border-gray-700">
+        <div className="flex bg-gray-800/50 rounded-xl p-1 mb-4 sm:mb-6 border border-gray-700">
           <button
             onClick={() => setActiveTab('join')}
             className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
@@ -158,7 +158,7 @@ export default function Home() {
           transition={{ delay: 0.5 }}
         >
           <p className="text-xs text-gray-600 uppercase tracking-wide mb-3">How it works</p>
-          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-gray-500 flex-wrap">
             <span className="text-blue-400">Image → Words</span>
             <span>→</span>
             <span className="text-purple-400">Words → Phrases</span>
