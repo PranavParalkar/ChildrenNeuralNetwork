@@ -82,16 +82,19 @@ export interface ServerToClientEvents {
   'show-phrases': (data: { phrases: string[] }) => void;
   'show-results': (data: { sentences: string[]; imageUrl: string }) => void;
   'timer-tick': (data: { timeRemaining: number }) => void;
+  'timer-started': (data: { phase: GamePhase; totalTime: number }) => void;
   'submission-received': () => void;
   'game-finished': () => void;
   'error': (data: { message: string }) => void;
-  'host-update': (data: { phase: GamePhase; stats: RoomStats }) => void;
+  'host-update': (data: { phase: GamePhase; stats: RoomStats; timerStarted: boolean }) => void;
 }
 
 export interface ClientToServerEvents {
   'create-room': (data: { hostName: string }) => void;
   'join-room': (data: { roomCode: string; playerName: string }) => void;
   'start-game': (data: { roomCode: string }) => void;
+  'start-timer': (data: { roomCode: string }) => void;
+  'end-phase': (data: { roomCode: string }) => void;
   'submit-word': (data: { roomCode: string; word: string }) => void;
   'submit-phrase': (data: { roomCode: string; phrase: string }) => void;
   'submit-sentence': (data: { roomCode: string; sentence: string }) => void;
@@ -104,4 +107,7 @@ export interface RoomStats {
   hiddenCount: number;
   outputCount: number;
   submissions: number;
+  inputSubmissions: number;
+  hiddenSubmissions: number;
+  outputSubmissions: number;
 }

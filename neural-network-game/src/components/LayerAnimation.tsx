@@ -38,7 +38,7 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
 
   return (
     <motion.div
-      className="fixed inset-0 flex items-center justify-center bg-gray-950 z-50"
+      className="fixed inset-0 flex items-center justify-center bg-gray-950 z-50 p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -51,7 +51,7 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
-            className={`absolute w-2 h-2 rounded-full bg-gradient-to-r ${config.color}`}
+            className={`absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-r ${config.color}`}
             initial={{
               left: `${(i * 17 + 7) % 100}%`,
               top: `${(i * 23 + 13) % 100}%`,
@@ -74,21 +74,26 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
 
       {/* Main content */}
       <motion.div
-        className="text-center z-10"
+        className="text-center z-10 px-4"
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', duration: 1, bounce: 0.5 }}
       >
         <motion.div
-          className="text-8xl mb-6"
+          className="mb-4 sm:mb-6"
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         >
-          <config.icon size={80} />
+          <config.icon size={56} />
+          <style>{`
+            @media (min-width: 640px) {
+              .layer-icon-lg { width: 80px; height: 80px; }
+            }
+          `}</style>
         </motion.div>
 
         <motion.h1
-          className={`text-5xl font-bold bg-gradient-to-r ${config.color} bg-clip-text text-transparent mb-4`}
+          className={`text-3xl sm:text-5xl font-bold bg-gradient-to-r ${config.color} bg-clip-text text-transparent mb-3 sm:mb-4`}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
@@ -97,7 +102,7 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
         </motion.h1>
 
         <motion.p
-          className="text-xl text-gray-300"
+          className="text-base sm:text-xl text-gray-300"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.8 }}
@@ -106,7 +111,7 @@ export default function LayerAnimation({ layer, onComplete }: LayerAnimationProp
         </motion.p>
 
         <motion.div
-          className={`mt-8 mx-auto w-48 h-1 rounded-full bg-gradient-to-r ${config.color}`}
+          className={`mt-6 sm:mt-8 mx-auto w-32 sm:w-48 h-1 rounded-full bg-gradient-to-r ${config.color}`}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 1, duration: 2 }}

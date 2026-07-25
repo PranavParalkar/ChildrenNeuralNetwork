@@ -3,12 +3,38 @@
 import { motion } from 'framer-motion';
 import { GamePhase, Layer, DEFAULT_CONFIG } from '@/lib/types';
 import Timer from './Timer';
+import { InputLayerIcon, HiddenLayerIcon, OutputLayerIcon } from './Icons';
 
 interface WaitingScreenProps {
   layer: Layer;
   currentPhase: GamePhase;
   timeRemaining: number;
+  timerStarted?: boolean;
 }
+
+const layerConfig = {
+  input: {
+    icon: InputLayerIcon,
+    title: 'You are in the Input Layer',
+    color: 'text-blue-400',
+    borderColor: 'border-blue-500/30',
+    bgColor: 'bg-blue-500/10',
+  },
+  hidden: {
+    icon: HiddenLayerIcon,
+    title: 'You are in the Hidden Layer',
+    color: 'text-purple-400',
+    borderColor: 'border-purple-500/30',
+    bgColor: 'bg-purple-500/10',
+  },
+  output: {
+    icon: OutputLayerIcon,
+    title: 'You are in the Output Layer',
+    color: 'text-amber-400',
+    borderColor: 'border-amber-500/30',
+    bgColor: 'bg-amber-500/10',
+  },
+};
 
 const phaseMessages: Record<string, Record<Layer, string>> = {
   'input-phase': {
@@ -39,41 +65,54 @@ function getPhaseTime(phase: GamePhase): number {
   }
 }
 
-export default function WaitingScreen({ layer, currentPhase, timeRemaining }: WaitingScreenProps) {
+export default function WaitingScreen({ layer, currentPhase, timeRemaining, timerStarted = true }: WaitingScreenProps) {
   const message = phaseMessages[currentPhase]?.[layer] || 'Processing...';
+  const config = layerConfig[layer];
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 sm:p-6">
       <motion.div
-        className="text-center"
+        className="text-center w-full max-w-md"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
+        {/* Bold Layer Heading Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 sm:mb-8 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border ${config.borderColor} ${config.bgColor}`}
+        >
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <config.icon size={24} />
+            <h2 className={`text-lg sm:text-xl font-extrabold ${config.color}`}>{config.title}</h2>
+          </div>
+        </motion.div>
+
         {/* Neural network visualization */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-8">
-            {['input', 'hidden', 'output'].map((l) => (
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-center gap-4 sm:gap-8">
+            {(['input', 'hidden', 'output'] as const).map((l) => (
               <motion.div
                 key={l}
                 className={`flex flex-col items-center ${l === getCurrentActiveLayer(currentPhase) ? 'opacity-100' : 'opacity-30'}`}
                 animate={l === getCurrentActiveLayer(currentPhase) ? { scale: [1, 1.05, 1] } : {}}
                 transition={{ duration: 1.5, repeat: Infinity }}
               >
-                <div className={`w-12 h-12 rounded-full border-2 ${
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 ${
                   l === 'input' ? 'border-blue-400 bg-blue-500/20' :
                   l === 'hidden' ? 'border-purple-400 bg-purple-500/20' :
                   'border-amber-400 bg-amber-500/20'
                 } flex items-center justify-center`}>
                   <span className="text-xs font-bold text-white uppercase">{l[0]}</span>
                 </div>
-                <span className="text-xs text-gray-400 mt-1 capitalize">{l}</span>
+                <span className="text-[10px] sm:text-xs text-gray-400 mt-1 capitalize">{l}</span>
               </motion.div>
             ))}
           </div>
         </div>
 
         <motion.p
-          className="text-xl text-gray-300 mb-6"
+          className="text-base sm:text-xl text-gray-300 mb-4 sm:mb-6"
           key={message}
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -81,12 +120,17 @@ export default function WaitingScreen({ layer, currentPhase, timeRemaining }: Wa
           {message}
         </motion.p>
 
-        {timeRemaining > 0 && (
-          <Timer timeRemaining={timeRemaining} totalTime={getPhaseTime(currentPhase)} label="Phase Timer" />
+        {(timeRemaining > 0 || !timerStarted) && (
+          <Timer
+            timeRemaining={timeRemaining}
+            totalTime={getPhaseTime(currentPhase)}
+            label="Phase Timer"
+            timerStarted={timerStarted}
+          />
         )}
 
         <motion.div
-          className="mt-8 flex gap-1 justify-center"
+          className="mt-6 sm:mt-8 flex gap-1 justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >

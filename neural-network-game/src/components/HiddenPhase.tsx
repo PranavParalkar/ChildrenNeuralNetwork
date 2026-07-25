@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Timer from './Timer';
 import WordCloud from './WordCloud';
-import { CheckIcon } from './Icons';
+import { CheckIcon, HiddenLayerIcon } from './Icons';
 import { DEFAULT_CONFIG, WordWithFrequency } from '@/lib/types';
 
 interface HiddenPhaseProps {
@@ -12,9 +12,10 @@ interface HiddenPhaseProps {
   timeRemaining: number;
   onSubmit: (phrase: string) => void;
   submitted: boolean;
+  timerStarted?: boolean;
 }
 
-export default function HiddenPhase({ words, timeRemaining, onSubmit, submitted }: HiddenPhaseProps) {
+export default function HiddenPhase({ words, timeRemaining, onSubmit, submitted, timerStarted = true }: HiddenPhaseProps) {
   const [phrase, setPhrase] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -29,24 +30,29 @@ export default function HiddenPhase({ words, timeRemaining, onSubmit, submitted 
   const wordCount = phrase.trim() ? phrase.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 sm:p-6">
+      {/* Bold Layer Heading */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-6"
+        className="text-center mb-4 sm:mb-6"
       >
-        <h2 className="text-2xl font-bold text-purple-400 mb-1">Hidden Layer</h2>
-        <p className="text-gray-400">Form a TWO-word phrase from these words</p>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <HiddenLayerIcon size={28} />
+          <h2 className="text-xl sm:text-2xl font-extrabold text-purple-400">You are in the Hidden Layer</h2>
+        </div>
+        <p className="text-sm sm:text-base text-gray-400">Form a TWO-word phrase from these words</p>
       </motion.div>
 
       <Timer
         timeRemaining={timeRemaining}
         totalTime={DEFAULT_CONFIG.hiddenTime}
         label="Time Left"
+        timerStarted={timerStarted}
       />
 
       <motion.div
-        className="my-8 max-w-2xl w-full"
+        className="my-4 sm:my-8 max-w-2xl w-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
@@ -63,19 +69,19 @@ export default function HiddenPhase({ words, timeRemaining, onSubmit, submitted 
           transition={{ delay: 0.5 }}
         >
           <div className="flex flex-col gap-2">
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <input
                 type="text"
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder="Two-word phrase..."
-                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                className="flex-1 px-3 sm:px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-sm sm:text-base"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={wordCount !== 2}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl transition-colors"
+                className="px-4 sm:px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl transition-colors text-sm sm:text-base"
               >
                 Send
               </button>

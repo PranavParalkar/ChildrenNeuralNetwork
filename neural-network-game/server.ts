@@ -32,6 +32,8 @@ const outputSubmissions = new Map<string, string[]>(); // roomCode -> sentences
 
 // Timer tracking per room (Bug #2 fix: clean up intervals on room deletion)
 const roomTimers = new Map<string, NodeJS.Timeout[]>();
+// Track whether the timer has been started for the current phase
+const roomTimerStarted = new Map<string, boolean>();
 
 function addRoomTimer(roomCode: string, timer: NodeJS.Timeout) {
   const timers = roomTimers.get(roomCode) || [];
@@ -57,6 +59,7 @@ function cleanupRoom(roomCode: string, room: RoomState) {
   inputSubmissions.delete(roomCode);
   hiddenSubmissions.delete(roomCode);
   outputSubmissions.delete(roomCode);
+  roomTimerStarted.delete(roomCode);
 }
 
 // Bug #7 fix: collision-safe room code generation
@@ -173,6 +176,9 @@ function getRoomStats(room: RoomState): RoomStats {
     hiddenCount: room.players.filter(p => p.layer === 'hidden').length,
     outputCount: room.players.filter(p => p.layer === 'output').length,
     submissions: room.players.filter(p => p.hasSubmitted).length,
+    inputSubmissions: room.players.filter(p => p.layer === 'input' && p.hasSubmitted).length,
+    hiddenSubmissions: room.players.filter(p => p.layer === 'hidden' && p.hasSubmitted).length,
+    outputSubmissions: room.players.filter(p => p.layer === 'output' && p.hasSubmitted).length,
   };
 }
 
@@ -284,9 +290,10 @@ app.prepare().then(() => {
       io.to(room.hostId).emit('host-update', {
         phase: 'distributing',
         stats: getRoomStats(room),
+        timerStarted: false,
       });
 
-      // After 5 seconds of assignment animation, start the input phase
+      // After 5 seconds of assignment animation, start the input phase (but don't start timer)
       const distributingTimeout = setTimeout(() => {
         // Verify room still exists before proceeding
         if (rooms.has(roomCode)) {
@@ -319,6 +326,7 @@ app.prepare().then(() => {
       io.to(room.hostId).emit('host-update', {
         phase: room.phase,
         stats: getRoomStats(room),
+        timerStarted: roomTimerStarted.get(roomCode) || false,
       });
     });
 
@@ -344,6 +352,7 @@ app.prepare().then(() => {
       io.to(room.hostId).emit('host-update', {
         phase: room.phase,
         stats: getRoomStats(room),
+        timerStarted: roomTimerStarted.get(roomCode) || false,
       });
     });
 
@@ -369,6 +378,7 @@ app.prepare().then(() => {
       io.to(room.hostId).emit('host-update', {
         phase: room.phase,
         stats: getRoomStats(room),
+        timerStarted: roomTimerStarted.get(roomCode) || false,
       });
     });
 
@@ -386,6 +396,66 @@ app.prepare().then(() => {
       cleanupRoom(roomCode, room);
 
       console.log(`Room ${roomCode} finished and cleaned up`);
+    });
+
+    // HOST: Start the timer for the current phase
+    socket.on('start-timer', ({ roomCode }) => {
+      const room = rooms.get(roomCode);
+      if (!room) return;
+      if (socket.id !== room.hostId) return;
+
+      const phase = room.phase;
+      if (phase !== 'input-phase' && phase !== 'hidden-phase' && phase !== 'output-phase') return;
+      // Prevent double-start
+      if (roomTimerStarted.get(roomCode)) return;
+
+      roomTimerStarted.set(roomCode, true);
+
+      let totalTime: number;
+      switch (phase) {
+        case 'input-phase': totalTime = DEFAULT_CONFIG.inputTime; break;
+        case 'hidden-phase': totalTime = DEFAULT_CONFIG.hiddenTime; break;
+        case 'output-phase': totalTime = DEFAULT_CONFIG.outputTime; break;
+        default: return;
+      }
+
+      // Notify all clients that the timer has started
+      io.to(roomCode).emit('timer-started', { phase, totalTime });
+      io.to(room.hostId).emit('host-update', {
+        phase,
+        stats: getRoomStats(room),
+        timerStarted: true,
+      });
+
+      // Start the countdown
+      let timeLeft = totalTime;
+      const timerInterval = setInterval(() => {
+        if (!rooms.has(roomCode)) {
+          clearInterval(timerInterval);
+          return;
+        }
+        timeLeft--;
+        io.to(roomCode).emit('timer-tick', { timeRemaining: timeLeft });
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          endCurrentPhase(io, room, roomCode);
+        }
+      }, 1000);
+      addRoomTimer(roomCode, timerInterval);
+    });
+
+    // HOST: End the current phase early
+    socket.on('end-phase', ({ roomCode }) => {
+      const room = rooms.get(roomCode);
+      if (!room) return;
+      if (socket.id !== room.hostId) return;
+
+      const phase = room.phase;
+      if (phase !== 'input-phase' && phase !== 'hidden-phase' && phase !== 'output-phase') return;
+
+      // Clear all current timers and end the phase
+      clearRoomTimers(roomCode);
+      endCurrentPhase(io, room, roomCode);
     });
 
     // Handle disconnect
@@ -410,12 +480,23 @@ app.prepare().then(() => {
     });
   });
 
+  // Helper: end the current phase based on room state
+  function endCurrentPhase(io: SocketIOServer, room: RoomState, roomCode: string) {
+    roomTimerStarted.set(roomCode, false);
+    switch (room.phase) {
+      case 'input-phase': endInputPhase(io, room, roomCode); break;
+      case 'hidden-phase': endHiddenPhase(io, room, roomCode); break;
+      case 'output-phase': endOutputPhase(io, room, roomCode); break;
+    }
+  }
+
   // Game phase management functions
   function startInputPhase(io: SocketIOServer, room: RoomState, roomCode: string) {
     // Verify room still exists
     if (!rooms.has(roomCode)) return;
 
     room.phase = 'input-phase';
+    roomTimerStarted.set(roomCode, false);
     // Reset submissions
     room.players.forEach(p => { if (p.layer === 'input') p.hasSubmitted = false; });
 
@@ -423,30 +504,11 @@ app.prepare().then(() => {
     for (const player of room.players) {
       if (player.layer === 'input') {
         io.to(player.id).emit('show-image', { imageUrl: room.currentImage! });
-        io.to(player.id).emit('phase-change', { phase: 'input-phase', timeRemaining: DEFAULT_CONFIG.inputTime });
-      } else {
-        io.to(player.id).emit('phase-change', { phase: 'input-phase', timeRemaining: DEFAULT_CONFIG.inputTime });
       }
+      io.to(player.id).emit('phase-change', { phase: 'input-phase' });
     }
 
-    io.to(room.hostId).emit('host-update', { phase: 'input-phase', stats: getRoomStats(room) });
-
-    // Timer countdown (Bug #2 fix: track interval for cleanup)
-    let timeLeft = DEFAULT_CONFIG.inputTime;
-    const timerInterval = setInterval(() => {
-      // Stop if room was deleted
-      if (!rooms.has(roomCode)) {
-        clearInterval(timerInterval);
-        return;
-      }
-      timeLeft--;
-      io.to(roomCode).emit('timer-tick', { timeRemaining: timeLeft });
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        endInputPhase(io, room, roomCode);
-      }
-    }, 1000);
-    addRoomTimer(roomCode, timerInterval);
+    io.to(room.hostId).emit('host-update', { phase: 'input-phase', stats: getRoomStats(room), timerStarted: false });
   }
 
   function endInputPhase(io: SocketIOServer, room: RoomState, roomCode: string) {
@@ -470,38 +532,21 @@ app.prepare().then(() => {
     if (!rooms.has(roomCode)) return;
 
     room.phase = 'hidden-phase';
+    roomTimerStarted.set(roomCode, false);
     room.players.forEach(p => { if (p.layer === 'hidden') p.hasSubmitted = false; });
 
     // Use provided frequency data or build it from stored topWords
     const wordData: WordWithFrequency[] = wordsWithFreq || room.topWords!.map(w => ({ word: w, count: 1 }));
 
-    // Send words to hidden layer players
+    // Send words to hidden layer players and notify all of phase change
     for (const player of room.players) {
       if (player.layer === 'hidden') {
         io.to(player.id).emit('show-words', { words: wordData });
-        io.to(player.id).emit('phase-change', { phase: 'hidden-phase', timeRemaining: DEFAULT_CONFIG.hiddenTime });
-      } else {
-        io.to(player.id).emit('phase-change', { phase: 'hidden-phase', timeRemaining: DEFAULT_CONFIG.hiddenTime });
       }
+      io.to(player.id).emit('phase-change', { phase: 'hidden-phase' });
     }
 
-    io.to(room.hostId).emit('host-update', { phase: 'hidden-phase', stats: getRoomStats(room) });
-
-    // Timer countdown (Bug #2 fix: track interval for cleanup)
-    let timeLeft = DEFAULT_CONFIG.hiddenTime;
-    const timerInterval = setInterval(() => {
-      if (!rooms.has(roomCode)) {
-        clearInterval(timerInterval);
-        return;
-      }
-      timeLeft--;
-      io.to(roomCode).emit('timer-tick', { timeRemaining: timeLeft });
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        endHiddenPhase(io, room, roomCode);
-      }
-    }, 1000);
-    addRoomTimer(roomCode, timerInterval);
+    io.to(room.hostId).emit('host-update', { phase: 'hidden-phase', stats: getRoomStats(room), timerStarted: false });
   }
 
   function endHiddenPhase(io: SocketIOServer, room: RoomState, roomCode: string) {
@@ -524,35 +569,18 @@ app.prepare().then(() => {
     if (!rooms.has(roomCode)) return;
 
     room.phase = 'output-phase';
+    roomTimerStarted.set(roomCode, false);
     room.players.forEach(p => { if (p.layer === 'output') p.hasSubmitted = false; });
 
-    // Send phrases to output layer players
+    // Send phrases to output layer players and notify all of phase change
     for (const player of room.players) {
       if (player.layer === 'output') {
         io.to(player.id).emit('show-phrases', { phrases: room.topPhrases! });
-        io.to(player.id).emit('phase-change', { phase: 'output-phase', timeRemaining: DEFAULT_CONFIG.outputTime });
-      } else {
-        io.to(player.id).emit('phase-change', { phase: 'output-phase', timeRemaining: DEFAULT_CONFIG.outputTime });
       }
+      io.to(player.id).emit('phase-change', { phase: 'output-phase' });
     }
 
-    io.to(room.hostId).emit('host-update', { phase: 'output-phase', stats: getRoomStats(room) });
-
-    // Timer countdown (Bug #2 fix: track interval for cleanup)
-    let timeLeft = DEFAULT_CONFIG.outputTime;
-    const timerInterval = setInterval(() => {
-      if (!rooms.has(roomCode)) {
-        clearInterval(timerInterval);
-        return;
-      }
-      timeLeft--;
-      io.to(roomCode).emit('timer-tick', { timeRemaining: timeLeft });
-      if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        endOutputPhase(io, room, roomCode);
-      }
-    }, 1000);
-    addRoomTimer(roomCode, timerInterval);
+    io.to(room.hostId).emit('host-update', { phase: 'output-phase', stats: getRoomStats(room), timerStarted: false });
   }
 
   function endOutputPhase(io: SocketIOServer, room: RoomState, roomCode: string) {
@@ -589,7 +617,7 @@ app.prepare().then(() => {
         imageUrl: room.currentImage!,
       });
 
-      io.to(room.hostId).emit('host-update', { phase: 'results', stats: getRoomStats(room) });
+      io.to(room.hostId).emit('host-update', { phase: 'results', stats: getRoomStats(room), timerStarted: false });
     }, DEFAULT_CONFIG.resultsDelay * 1000);
     addRoomTimer(roomCode, resultsTimeout as unknown as NodeJS.Timeout);
   }

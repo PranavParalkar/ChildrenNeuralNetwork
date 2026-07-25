@@ -23,6 +23,7 @@ function PlayContent() {
   const [layer, setLayer] = useState<Layer | null>(null);
   const [phase, setPhase] = useState<GamePhase>('waiting');
   const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timerStarted, setTimerStarted] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [words, setWords] = useState<WordWithFrequency[]>([]);
@@ -58,6 +59,9 @@ function PlayContent() {
 
     socket.on('phase-change', ({ phase, timeRemaining }) => {
       setPhase(phase);
+      // Reset timer state when phase changes — timer hasn't started yet for the new phase
+      setTimerStarted(false);
+      setTimeRemaining(0);
       if (timeRemaining !== undefined) {
         setTimeRemaining(timeRemaining);
       }
@@ -72,6 +76,11 @@ function PlayContent() {
       if (isMyPhase) {
         setSubmitted(false);
       }
+    });
+
+    socket.on('timer-started', ({ totalTime }) => {
+      setTimerStarted(true);
+      setTimeRemaining(totalTime);
     });
 
     socket.on('show-image', ({ imageUrl }) => {
@@ -140,7 +149,7 @@ function PlayContent() {
   // Error state
   if (error && isFatalError) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4 sm:p-6">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -149,9 +158,9 @@ function PlayContent() {
           <div className="flex justify-center mb-4">
             <ErrorIcon size={48} />
           </div>
-          <h2 className="text-2xl font-bold text-red-400 mb-2">Error</h2>
-          <p className="text-gray-400">{error}</p>
-          <a href="/" className="inline-block mt-6 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-colors">
+          <h2 className="text-xl sm:text-2xl font-bold text-red-400 mb-2">Error</h2>
+          <p className="text-gray-400 text-sm sm:text-base">{error}</p>
+          <a href="/" className="inline-block mt-6 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-colors text-sm sm:text-base">
             Back to Home
           </a>
         </motion.div>
@@ -167,7 +176,7 @@ function PlayContent() {
   // Waiting for game to start
   if (phase === 'waiting') {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -176,11 +185,11 @@ function PlayContent() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            className="w-16 h-16 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full mx-auto mb-6"
+            className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full mx-auto mb-4 sm:mb-6"
           />
-          <h2 className="text-2xl font-bold text-white mb-2">Waiting for Host</h2>
-          <p className="text-gray-400 mb-1">Room: <span className="text-cyan-400 font-mono">{roomCode}</span></p>
-          <p className="text-gray-500 text-sm">{playerCount} player{playerCount !== 1 ? 's' : ''} in room</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Waiting for Host</h2>
+          <p className="text-gray-400 mb-1 text-sm sm:text-base">Room: <span className="text-cyan-400 font-mono">{roomCode}</span></p>
+          <p className="text-gray-500 text-xs sm:text-sm">{playerCount} player{playerCount !== 1 ? 's' : ''} in room</p>
           {/* Non-fatal error toast */}
           {error && !isFatalError && (
             <motion.div
@@ -191,8 +200,8 @@ function PlayContent() {
               {error}
             </motion.div>
           )}
-          <div className="mt-6 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 inline-block">
-            <p className="text-sm text-gray-400">Playing as <span className="text-white font-medium">{playerName}</span></p>
+          <div className="mt-4 sm:mt-6 px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700 inline-block">
+            <p className="text-xs sm:text-sm text-gray-400">Playing as <span className="text-white font-medium">{playerName}</span></p>
           </div>
         </motion.div>
       </div>
@@ -208,6 +217,7 @@ function PlayContent() {
           timeRemaining={timeRemaining}
           onSubmit={handleSubmitWord}
           submitted={submitted}
+          timerStarted={timerStarted}
         />
         <InstructionsModal
           isOpen={showInstructions}
@@ -227,6 +237,7 @@ function PlayContent() {
           timeRemaining={timeRemaining}
           onSubmit={handleSubmitPhrase}
           submitted={submitted}
+          timerStarted={timerStarted}
         />
         <InstructionsModal
           isOpen={showInstructions}
@@ -246,6 +257,7 @@ function PlayContent() {
           timeRemaining={timeRemaining}
           onSubmit={handleSubmitSentence}
           submitted={submitted}
+          timerStarted={timerStarted}
         />
         <InstructionsModal
           isOpen={showInstructions}
@@ -263,6 +275,7 @@ function PlayContent() {
         layer={layer || 'input'}
         currentPhase={phase}
         timeRemaining={timeRemaining}
+        timerStarted={timerStarted}
       />
       {layer && (
         <InstructionsModal
