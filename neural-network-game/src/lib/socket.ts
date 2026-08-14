@@ -8,7 +8,17 @@ import { ClientToServerEvents, ServerToClientEvents } from './types';
 export function createSocket(): Socket<ServerToClientEvents, ClientToServerEvents> {
   return io({
     path: '/api/socketio',
-    transports: ['websocket', 'polling'],
+    // Start with polling (works everywhere, including behind CDNs/proxies
+    // that may block WebSocket upgrades) then upgrade to websocket once a
+    // connection is established.  The previous config listed 'websocket'
+    // first which silently fails on many hosting platforms.
+    transports: ['polling', 'websocket'],
     autoConnect: false,
+    // Reconnection settings for hosted environments (network can be flaky)
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    timeout: 20000,
   });
 }

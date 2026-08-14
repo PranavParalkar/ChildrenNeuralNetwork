@@ -15,7 +15,10 @@ import {
 } from './src/lib/types';
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+// In production, bind to 0.0.0.0 so the server accepts connections from
+// external clients (required by every hosting platform).  In dev, keep
+// 'localhost' so Next.js HMR WebSocket stays on 127.0.0.1.
+const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });
@@ -198,7 +201,7 @@ app.prepare().then(() => {
     pingTimeout: 60000,
     pingInterval: 25000,
     maxHttpBufferSize: 1e6,
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
   });
 
   io.on('connection', (socket) => {
