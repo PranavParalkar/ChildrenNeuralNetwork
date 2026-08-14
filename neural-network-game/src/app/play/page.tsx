@@ -43,6 +43,12 @@ function PlayContent() {
       socket.emit('join-room', { roomCode, playerName });
     });
 
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err);
+      setError(`Unable to connect to game server: ${err.message}`);
+      setIsFatalError(true);
+    });
+
     socket.on('player-joined', ({ players }) => {
       setPlayerCount(players.length);
     });

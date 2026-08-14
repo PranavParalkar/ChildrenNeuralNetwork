@@ -26,15 +26,31 @@ function HostContent() {
   const [results, setResults] = useState<{ sentences: string[]; imageUrl: string } | null>(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [connecting, setConnecting] = useState(true);
+  const [connectionError, setConnectionError] = useState('');
 
   useEffect(() => {
     const socket = socketRef.current;
 
     socket.on('connect', () => {
+      setConnecting(false);
+      setConnectionError('');
       // Bug #12 fix: only create a room if we haven't already
       // Prevents duplicate room creation on socket reconnect (network blip)
       if (!roomCodeRef.current) {
         socket.emit('create-room', { hostName });
+      }
+    });
+
+    socket.on('connect_error', (err) => {
+      setConnecting(false);
+      setConnectionError(`Unable to connect to game server: ${err.message}`);
+      console.error('Socket connection error:', err);
+    });
+
+    socket.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        setConnectionError('Disconnected from server. Attempting to reconnect...');
       }
     });
 
@@ -172,6 +188,40 @@ function HostContent() {
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Host Dashboard</h1>
+          {/* Connection status feedback */}
+          {connecting && !roomCode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="inline-block"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                className="w-8 h-8 border-3 border-cyan-400/30 border-t-cyan-400 rounded-full mx-auto mb-3"
+              />
+              <p className="text-gray-400 text-sm">Connecting to game server...</p>
+            </motion.div>
+          )}
+          {connectionError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-4 text-center text-sm max-w-md mx-auto"
+            >
+              <p className="mb-2">{connectionError}</p>
+              <button
+                onClick={() => {
+                  setConnectionError('');
+                  setConnecting(true);
+                  socketRef.current.connect();
+                }}
+                className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-xs transition-colors"
+              >
+                Retry Connection
+              </button>
+            </motion.div>
+          )}
           {roomCode && (
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
