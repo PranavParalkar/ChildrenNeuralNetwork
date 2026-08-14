@@ -634,7 +634,10 @@ app.prepare().then(() => {
     addRoomTimer(roomCode, resultsTimeout as unknown as NodeJS.Timeout);
   }
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, hostname, () => {
     console.log(`> Neural Network Game ready on http://${hostname}:${port}`);
+    if (hostname === '0.0.0.0') {
+      console.log(`> Accepting connections on all network interfaces`);
+    }
   });
 });
